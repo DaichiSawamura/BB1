@@ -1,33 +1,70 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 import time
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
+import pandas as pd
 
 URI = 'https://goldapple.ru/parfjumerija'
 driver = webdriver.Chrome()
+data = []
+save = 'D:/Users/User/Desktop/data.csv'  # <--- здесь нужно указать путь куда будет сохраняться csv файл с результатами
+
 
 
 def get_source_code(URI) -> None:
-    driver.get(url=URI)
+    driver.get(URI)
 
     while True:
         try:
-            element = WebDriverWait(driver=driver, timeout=2).until(
-                expected_conditions.presence_of_element_located((By.CLASS_NAME, "u8yk8"))
-            )
-            with open("result.txt", "w+", encoding="utf-8") as f:
-                f.write(element.text)
+            driver.maximize_window()
 
-            time.sleep(2)
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            button = driver.find_element(By.CLASS_NAME, 'IYYkW')  # нужно для корректного отображения html кода
+            button.click()
+            time.sleep(1)
+            for i in range(1, 25):     # парсер первой страницы(24 товара)
+                link = driver.find_element(By.XPATH,
+                                           f'//*[@id="__layout"]/div/main/div[4]/div[1]/div/div{[i]}/article/a').get_attribute(
+                    'href')
+                driver.get(link)
+                time.sleep(1)
+                title = driver.find_element(By.CLASS_NAME, "E91uS").text.strip().replace('\n', ' ')
+                des = driver.find_element(By.CLASS_NAME, 'ri-on').text.strip().replace('\n', ' ')
+                price = driver.find_element(By.CLASS_NAME, 'HRcnL').text.strip().replace('\n', ' ')
+                country_click = driver.find_elements(By.CLASS_NAME, 'ga-tabs-tab')[-1]
+                country_click.click()
+                time.sleep(1)
+                country = driver.find_element(By.CLASS_NAME, 'ri-on').text.strip().replace('\n', ' ')
+                data.append([link, title, des, price, country])
+                driver.back()
+                time.sleep(1)
+            header = ['link', 'title', 'des', 'price', 'country']
+            df = pd.DataFrame(data, columns=header)
+            df.to_csv(save, sep=';', encoding='utf-8-sig')
 
+            for page in range(2, 3):  # парсер 2-ой и следующих страниц(после первой страницы меняется html код сайта)
+                driver.get(f'https://goldapple.ru/parfjumerija?p={page}')
+                time.sleep(1)
+                for i in range(1, 25):
+                    link = driver.find_element(By.XPATH,
+                                               f'//*[@id="__layout"]/div/main/div[5]/div[1]/div/div{[i]}/article/a'). \
+                        get_attribute('href')
+                    driver.get(link)
+                    time.sleep(1)
+                    title = driver.find_element(By.CLASS_NAME, "E91uS").text.strip().replace('\n', ' ')
+                    des = driver.find_element(By.CLASS_NAME, 'ri-on').text.strip().replace('\n', ' ')
+                    price = driver.find_element(By.CLASS_NAME, 'HRcnL').text.strip().replace('\n', ' ')
+                    country_click = driver.find_elements(By.CLASS_NAME, 'ga-tabs-tab')[-1]
+                    country_click.click()
+                    time.sleep(1)
+                    country = driver.find_element(By.CLASS_NAME, 'ri-on').text.strip().replace('\n', ' ')
+                    data.append([link, title, des, price, country])
+                    driver.back()
+                    time.sleep(1)
+                header = ['link', 'title', 'des', 'price', 'country']
+                df = pd.DataFrame(data, columns=header)
+                df.to_csv(save, sep=';', encoding='utf-8-sig')
             break
-        except TimeoutException as _ex:
-            print(_ex)
+        except:
+            print("ошибка")
             break
 
 
